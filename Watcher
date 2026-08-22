@@ -1,0 +1,585 @@
+# meta developer: @friendsforeveruwu
+
+from datetime import datetime
+
+from telethon import types
+
+from .. import loader, utils
+
+
+@loader.tds
+class WatchHistoryMod(loader.Module):
+    """WatchHistory — история сообщений и отслеживание изменений."""
+
+    strings = {
+        "name": "WatchHistory",  # Имя модуля в списке Heroku
+    }
+
+    MAX_HISTORY = 5000  # Максимальное количество сообщений в истории одного чата
+    MAX_CHANGES = 50  # Максимальное количество изменений, показываемых в .wtchlist
+
+    async def client_ready(self, client, db):
+        self.client = client  # Telegram-клиент
+        self.db = db  # База данных модуля
+
+        if self.get("watched", None) is None:
+            self.set("watched", [])
+
+        if self.get("history", None) is None:
+            self.set("history", {})
+
+        if self.get("changes", None) is None:
+            self.set("changes", {})
+
+    def get_watched(self):
+        return self.get("watched", [])
+
+    def get_history(self):
+        return self.get("history", {})
+
+    def get_changes(self):
+        return self.get("changes", {})
+
+    async def get_sender_name(self, message):
+        try:
+            sender = await message.get_sender()
+
+            if not sender:
+                return "Неизвестный"
+
+            first_name = getattr(sender, "first_name", "") or ""
+            last_name = getattr(sender, "last_name", "") or ""
+            username = getattr(sender, "username", None)
+
+            name = f"{first_name} {last_name}".strip()
+
+            if name:
+                return name
+
+            if username:
+                return f"@{username}"
+
+            return str(sender.id)
+
+        except Exception:
+            return "Неизвестный"
+
+    @loader.watcher()
+    async def watcher(self, message):
+        try:
+            if message.chat_id is None:
+                return
+
+            chat_id = str(message.chat_id)
+
+            if chat_id not in self.get_watched():
+                return
+
+            text = message.raw_text or ""
+
+            commands = (
+                ".addwtch",
+                ".delwtch",
+                ".wtchlist",
+                ".wtchhstry",
+                ".wtchclear",
+            )
+
+            if text.startswith(commands):
+                return
+
+            sender = await self.get_sender_name(message)
+
+            history = self.get_history()
+
+            if chat_id not in history:
+                history[chat_id] = {}
+
+            history[chat_id][str(message.id)] = {
+                "id": message.id,
+                "sender": sender,
+                "text": text,
+                "date": (
+                    message.date.timestamp()
+                    if message.date
+                    else 0
+                ),
+            }
+
+            if len(history[chat_id]) > self.MAX_HISTORY:
+                items = list(history[chat_id].values())
+
+                items.sort(
+                    key=lambda x: x.get("date", 0)
+                )
+
+                excess = len(items) - self.MAX_HISTORY
+
+                for old_message in items[:excess]:
+                    old_id = str(old_message["id"])
+                    del history[chat_id][old_id]
+
+            self.set("history", history)
+
+        except Exception:
+            return
+
+    @loader.watcher()
+    async def edited_watcher(self, message):
+        try:
+            if message.chat_id is None:
+                return
+
+            chat_id = str(message.chat_id)
+
+            if chat_id not in self.get_watched():
+                return
+
+            history = self.get_history()
+
+            if chat_id not in history:
+                return
+
+            message_id = str(message.id)
+
+            old = history[chat_id].get(message_id)
+
+            if not old:
+                return
+
+            old_text = old.get("text", "")
+            new_text = message.raw_text or ""
+
+            if old_text == new_text:
+                return
+
+            changes = self.get_changes()
+
+            if chat_id not in changes:
+                changes[chat_id] = {
+                    "deleted": [],
+                    "edited": [],
+                }
+
+            changes[chat_id]["edited"].append({
+                "id": message.id,
+                "sender": old.get("sender", "Неизвестный"),
+                "old": old_text,
+                "new": new_text,
+                "date": (
+                    message.edit_date.timestamp()
+                    if message.edit_date
+                    else datetime.now().timestamp()
+                ),
+            })
+
+            history[chat_id][message_id]["text"] = new_text
+
+            self.set("history", history)
+            self.set("changes", changes)
+
+        except Exception:
+            return
+
+    @loader.raw_handler(
+        types.UpdateDeleteMessages,
+        types.UpdateDeleteChannelMessages,
+    )
+    async def delete_handler(self, update):
+        try:
+            if isinstance(
+                update,
+                types.UpdateDeleteMessages,
+            ):
+                await self.process_deleted(
+                    update.messages
+                )
+                return
+
+            if isinstance(
+                update,
+                types.UpdateDeleteChannelMessages,
+            ):
+                channel_id = update.channel_id
+
+                chat_id = str(
+                    -1000000000000 - channel_id
+                )
+
+                if chat_id not in self.get_watched():
+                    return
+
+                await self.process_deleted(
+                    update.messages,
+                    chat_id,
+                )
+
+        except Exception:
+            return
+
+    async def process_deleted(
+        self,
+        deleted_ids,
+        known_chat_id=None,
+    ):
+        history = self.get_history()
+        changes = self.get_changes()
+        watched = self.get_watched()
+
+        if known_chat_id is not None:
+            chat_ids = [known_chat_id]
+
+        else:
+            chat_ids = []
+
+            for chat_id in watched:
+                if chat_id not in history:
+                    continue
+
+                for message_id in deleted_ids:
+                    if str(message_id) in history[chat_id]:
+                        chat_ids.append(chat_id)
+                        break
+
+        if not chat_ids:
+            return
+
+        for chat_id in chat_ids:
+
+            if chat_id not in history:
+                continue
+
+            if chat_id not in changes:
+                changes[chat_id] = {
+                    "deleted": [],
+                    "edited": [],
+                }
+
+            for message_id in deleted_ids:
+
+                message_id = str(message_id)
+
+                old = history[chat_id].get(message_id)
+
+                if not old:
+                    continue
+
+                changes[chat_id]["deleted"].append({
+                    "id": old["id"],
+                    "sender": old["sender"],
+                    "text": old["text"],
+                    "date": old["date"],
+                })
+
+                del history[chat_id][message_id]
+
+        self.set("history", history)
+        self.set("changes", changes)
+
+    @loader.command()
+    async def addwtchcmd(self, message):
+        """Включить отслеживание текущего чата."""
+
+        chat_id = str(message.chat_id)
+
+        watched = self.get_watched()
+
+        if chat_id in watched:
+            await utils.answer(
+                message,
+                "👁️ <b>Этот чат уже отслеживается.</b>",
+            )
+            return
+
+        watched.append(chat_id)
+
+        self.set("watched", watched)
+
+        history = self.get_history()
+
+        if chat_id not in history:
+            history[chat_id] = {}
+
+        self.set("history", history)
+
+        changes = self.get_changes()
+
+        if chat_id not in changes:
+            changes[chat_id] = {
+                "deleted": [],
+                "edited": [],
+            }
+
+        self.set("changes", changes)
+
+        await utils.answer(
+            message,
+            (
+                "👁️ <b>Отслеживание включено.</b>\n\n"
+                "Сообщения этого чата теперь сохраняются."
+            ),
+        )
+
+    @loader.command()
+    async def delwtchcmd(self, message):
+        """Выключить отслеживание текущего чата."""
+
+        chat_id = str(message.chat_id)
+
+        watched = self.get_watched()
+
+        if chat_id not in watched:
+            await utils.answer(
+                message,
+                "❌ <b>Этот чат не отслеживается.</b>",
+            )
+            return
+
+        watched.remove(chat_id)
+
+        self.set("watched", watched)
+
+        await utils.answer(
+            message,
+            "⛔ <b>Отслеживание отключено.</b>",
+        )
+
+    @loader.command()
+    async def wtchlistcmd(self, message):
+        """Показать удалённые и изменённые сообщения."""
+
+        chat_id = str(message.chat_id)
+
+        if chat_id not in self.get_watched():
+            await utils.answer(
+                message,
+                (
+                    "❌ <b>Этот чат не отслеживается.</b>\n"
+                    "Используй <code>.addwtch</code>."
+                ),
+            )
+            return
+
+        changes = self.get_changes()
+
+        data = changes.get(
+            chat_id,
+            {
+                "deleted": [],
+                "edited": [],
+            },
+        )
+
+        deleted = data.get("deleted", [])
+        edited = data.get("edited", [])
+
+        if not deleted and not edited:
+            await utils.answer(
+                message,
+                "✅ <b>Удалённых или изменённых сообщений нет.</b>",
+            )
+            return
+
+        result = "👁️ <b>WATCH LIST</b>\n"
+
+        # ====================================================
+        # УДАЛЁННЫЕ СООБЩЕНИЯ
+        # ====================================================
+
+        if deleted:
+
+            result += (
+                "\n🗑 <b>УДАЛЕНО:</b>\n"
+            )
+
+            for item in deleted[-self.MAX_CHANGES:]:
+
+                time = datetime.fromtimestamp(
+                    item["date"]
+                ).strftime("%H:%M:%S")
+
+                sender = utils.escape_html(
+                    item["sender"]
+                )
+
+                text = utils.escape_html(
+                    item["text"]
+                    or "[медиа/без текста]"
+                )
+
+                result += (
+                    f"\n<code>{time}</code> "
+                    f"<b>{sender}</b>\n"
+                    f"└ <blockquote>{text}</blockquote>"
+                )
+
+        # ====================================================
+        # ИЗМЕНЁННЫЕ СООБЩЕНИЯ
+        # ====================================================
+
+        if edited:
+
+            result += (
+                "\n\n✏️ <b>ИЗМЕНЕНО:</b>\n"
+            )
+
+            for item in edited[-self.MAX_CHANGES:]:
+
+                time = datetime.fromtimestamp(
+                    item["date"]
+                ).strftime("%H:%M:%S")
+
+                sender = utils.escape_html(
+                    item["sender"]
+                )
+
+                old = utils.escape_html(
+                    item["old"]
+                    or "[медиа/без текста]"
+                )
+
+                new = utils.escape_html(
+                    item["new"]
+                    or "[медиа/без текста]"
+                )
+
+                result += (
+                    f"\n<code>{time}</code> "
+                    f"<b>{sender}</b>\n"
+                    f"├ <b>Было:</b> "
+                    f"<blockquote>{old}</blockquote>\n"
+                    f"└ <b>Стало:</b> "
+                    f"<blockquote>{new}</blockquote>"
+                )
+
+        if len(result) > 4000:
+            result = (
+                result[:3900]
+                + "\n\n<i>...список обрезан.</i>"
+            )
+
+        await utils.answer(
+            message,
+            result,
+        )
+
+    @loader.command()
+    async def wtchhstrycmd(self, message):
+        """Показать историю сообщений текущего чата."""
+
+        chat_id = str(message.chat_id)
+
+        if chat_id not in self.get_watched():
+            await utils.answer(
+                message,
+                (
+                    "❌ <b>Этот чат не отслеживается.</b>\n"
+                    "Используй <code>.addwtch</code>."
+                ),
+            )
+            return
+
+        history = self.get_history()
+
+        messages = history.get(
+            chat_id,
+            {},
+        )
+
+        if not messages:
+            await utils.answer(
+                message,
+                "📭 <b>История пока пустая.</b>",
+            )
+            return
+
+        items = list(messages.values())
+
+        items.sort(
+            key=lambda x: x.get("date", 0)
+        )
+
+        result = "📜 <b>ИСТОРИЯ СООБЩЕНИЙ</b>\n"
+
+        for item in items:
+
+            time = datetime.fromtimestamp(
+                item["date"]
+            ).strftime("%H:%M:%S")
+
+            sender = utils.escape_html(
+                item["sender"]
+            )
+
+            text = utils.escape_html(
+                item["text"]
+                or "[медиа/без текста]"
+            )
+
+            result += (
+                f"\n<code>[{time}]</code> "
+                f"<b>{sender}</b>: {text}"
+            )
+
+        while len(result) > 3500:
+
+            position = result.rfind(
+                "\n",
+                0,
+                3500,
+            )
+
+            if position == -1:
+                position = 3500
+
+            chunk = result[:position]
+
+            result = result[position:]
+
+            await self.client.send_message(
+                message.chat_id,
+                chunk,
+                parse_mode="html",
+            )
+
+        if result:
+            await self.client.send_message(
+                message.chat_id,
+                result,
+                parse_mode="html",
+            )
+
+        try:
+            await message.delete()
+        except Exception:
+            pass
+
+    @loader.command()
+    async def wtchclearcmd(self, message):
+        """Очистить список удалений и редактирований."""
+
+        chat_id = str(message.chat_id)
+
+        if chat_id not in self.get_watched():
+            await utils.answer(
+                message,
+                "❌ <b>Этот чат не отслеживается.</b>",
+            )
+            return
+
+        changes = self.get_changes()
+
+        changes[chat_id] = {
+            "deleted": [],
+            "edited": [],
+        }
+
+        self.set("changes", changes)
+
+        await utils.answer(
+            message,
+            (
+                "🧹 <b>Список изменений очищен.</b>\n"
+                "📜 История сообщений сохранена."
+            ),
+        )
