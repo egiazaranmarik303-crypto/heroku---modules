@@ -1,0 +1,161 @@
+# meta developer: @friendsforeveruwu
+# meta banner: https://raw.githubusercontent.com/coddrago/Heroku/master/assets/banner.jpg
+
+import asyncio
+import functools
+import re
+import types
+
+from .. import loader, utils
+
+
+@loader.tds
+class DeleteArgs(loader.Module):
+    """Delete command results after a specified time."""
+
+    strings = {
+        "name": "DeleteArgs",
+        "cfg_time": "Default deletion time in seconds.",
+        "invalid_time": "❌ Invalid deletion time.",
+    }
+
+    def __init__(self):
+        self.config = loader.ModuleConfig(
+            loader.ConfigValue(
+                "DEFAULT_TIME",
+                10,
+                lambda m: self.strings("cfg_time"),
+                validator=loader.validators.Integer(minimum=1),
+            )
+        )
+        self._original_future_dispatcher = None
+
+    async def client_ready(self, client, db):
+        dispatcher = getattr(client, "dispatcher", None)
+
+        if dispatcher is None:
+            dispatcher = getattr(client, "command_dispatcher", None)
+
+        if dispatcher is None:
+            raise RuntimeError("Command dispatcher was not found")
+
+        if getattr(dispatcher, "_deleteargs_patched", False):
+            return
+
+        self._original_future_dispatcher = dispatcher.future_dispatcher
+
+        original = dispatcher.future_dispatcher
+        module = self
+
+        @functools.wraps(original)
+        async def patched_future_dispatcher(
+            func,
+            message,
+            exception_handler,
+            *args,
+        ):
+            if not getattr(message, "message", None):
+                return await original(
+                    func,
+                    message,
+                    exception_handler,
+                    *args,
+                )
+
+            delay = module._extract_delay(message)
+
+            if delay is None:
+                return await original(
+                    func,
+                    message,
+                    exception_handler,
+                    *args,
+                )
+
+            module._remove_delete_argument(message)
+
+            module._patch_message_methods(message, delay)
+
+            return await original(
+                func,
+                message,
+                exception_handler,
+                *args,
+            )
+
+        dispatcher.future_dispatcher = patched_future_dispatcher
+        dispatcher._deleteargs_patched = True
+        dispatcher._deleteargs_original = original
+
+    def _extract_delay(self, message):
+        text = message.message or ""
+
+        match = re.search(
+            r"(?:^|\s)-d(?:\s+([0-9]+(?:\.[0-9]+)?)([smh]?))?(?=\s|$)",
+            text,
+            re.IGNORECASE,
+        )
+
+        if not match:
+            return None
+
+        value = match.group(1)
+
+        if value is None:
+            return float(self.config["DEFAULT_TIME"])
+
+        value = float(value)
+        unit = (match.group(2) or "s").lower()
+
+        if unit == "m":
+            value *= 60
+        elif unit == "h":
+            value *= 3600
+
+        return value
+
+    def _remove_delete_argument(self, message):
+        text = message.message or ""
+
+        text = re.sub(
+            r"(?:^|\s)-d(?:\s+[0-9]+(?:\.[0-9]+)?[smh]?)?(?=\s|$)",
+            " ",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        text = re.sub(r"[ \t]{2,}", " ", text).strip()
+
+        message.message = text
+        message._text = None
+
+    def _patch_message_methods(self, message, delay):
+        for method_name in ("reply", "respond", "edit"):
+            original = getattr(message, method_name, None)
+
+            if original is None:
+                continue
+
+            async def wrapped(
+                *args,
+                __original=original,
+                **kwargs,
+            ):
+                result = await __original(*args, **kwargs)
+
+                if result is not None and hasattr(result, "delete"):
+                    asyncio.create_task(
+                        self._delete_later(result, delay)
+                    )
+
+                return result
+
+            setattr(message, method_name, wrapped)
+
+    async def _delete_later(self, message, delay):
+        await asyncio.sleep(delay)
+
+        try:
+            await message.delete()
+        except Exception:
+            pass
