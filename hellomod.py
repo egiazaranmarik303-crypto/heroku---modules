@@ -9,8 +9,8 @@ class MemoryModule(loader.Module):
         "success": "Message was saved!",
         "toolong": "Too long!"
     }
-    def config(self):
-        return loader.ModuleConfig(
+    def __init__(self):
+        self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "Max_length",
                 50,
