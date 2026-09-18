@@ -1,6 +1,6 @@
 from .. import loader, utils
 class MyModule(loader.Module):
-    ""my first module""
+    """my first module"""
     strings = {
         "name": "module"
     }
