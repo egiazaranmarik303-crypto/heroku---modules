@@ -62,4 +62,4 @@ class MemoryModule(loader.Module):
         await call.edit("кнопка 1 нажата!")
 
     async def button2(self,call):
-        await call.edit("Кнопка 2 нажата!")
+        await call.edit("кнопка 2 нажата!")
