@@ -47,4 +47,7 @@ class MemoryModule(loader.Module):
     @loader.command()
     async def button(self,message):
         """Button info"""
-        await utils.answer(message, "Нажми кнопку!",buttons=[[Button.inline("Yes",data = "click")]])
+        await message.respond(
+            "Нажми кнопку!",
+            buttons=[[Button.inline("Yes", data="click")]]
+        )
