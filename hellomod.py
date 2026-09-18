@@ -49,11 +49,11 @@ class MemoryModule(loader.Module):
         self.db.set(self.strings["name"],"savedtext", None)
         await utils.answer(message2,"Successfully reset!")
 
+
     @loader.command()
-    async def button(self,message):
+    async def button(self, message):
         """Button info"""
-        await utils.answer(
-            message,
+        await utils.answer(message,
             "TEST",
             buttons=[[Button.inline("Yes", data=b"click")]]
         )
