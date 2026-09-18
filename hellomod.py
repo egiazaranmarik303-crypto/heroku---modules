@@ -1,16 +1,28 @@
 from .. import loader, utils
 @loader.tds
-class HelloMod(loader.Module):
-    """Здоровается с пользователем"""
+class MemoryModule(loader.Module):
+    """Memory Module"""
     strings = {
-        "name": "MyModule"
+        "name": "Memory Module",
+        "empty": "Message is empty!",
+        "noinfo": "There is nonting in memory!",
+        "success": "Message was saved!"
     }
-
     @loader.command()
-    async def hello(self, message):
-        """Поздороваться"""
+    async def record(self,message):
+        """MRecord info"""
         text = utils.get_args_raw(message)
         if not text:
-            await utils.answer(message,"Пустое сообщение!")
+            await utils.answer(message,self.strings["empty"])
         else:
-            await utils.answer(message,f"Hello {text}!")
+            self.db.set(self.strings["name"],"savedtext",text)
+            await utils.answer(message,self.strings["success"])
+
+    @loader.command()
+    async def recall(self,message1):
+        """Recall info"""
+        text1 = self.db.get(self.strings["name"],"savedtext")
+        if not text1:
+            await utils.answer(message1,self.strings["noinfo"])
+        else:
+            await utils.answer(message1,text1)
