@@ -1,4 +1,5 @@
 from .. import loader, utils
+from telethon import Button
 @loader.tds
 class MemoryModule(loader.Module):
     """Memory Module"""
@@ -43,3 +44,7 @@ class MemoryModule(loader.Module):
         """Reset info"""
         self.db.set(self.strings["name"],"savedtext", None)
         await utils.answer(message2,"Successfully reset!")
+    @loader.command()
+    async def button(self,message):
+        """Button info"""
+        await utils.answer(message, "Нажми кнопку!",buttons=[[Button.inline("Yes",data = "click")]])
