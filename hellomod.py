@@ -14,7 +14,8 @@ class MemoryModule(loader.Module):
             loader.ConfigValue(
                 "Max_length",
                 50,
-                "Максимальная длина текста"
+                "Максимальная длина текста",
+                validator=loader.validators.Integer(minimum=1)
             )
         )
     @loader.command()
