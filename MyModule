@@ -9,6 +9,7 @@ class Module(loader.Module):
 
     async def client_ready(self,client,db):
         self.client = client
+
     @loader.command()
     async def setfriend(self,message):
         friend = utils.get_args_raw(message)
