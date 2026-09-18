@@ -1,4 +1,5 @@
 from .. import loader, utils
+from ..inline.types import InlineQuery
 
 @loader.tds
 class MemoryModule(loader.Module):
@@ -44,18 +45,17 @@ class MemoryModule(loader.Module):
 
     @loader.command()
     async def button(self, message):
-        """хыхвхывхы"""
         await self.inline.form(
-    text="Нажми кнопку",
-    message=message,
-    reply_markup=[
-        {
-            "text": "Click",
-            "callback": self.back
-        }
-    ],
-    disable_security=True
-)
-  
+            text="Нажми кнопку",
+            message=message,
+            reply_markup=[
+                {
+                    "text": "Click",
+                    "callback": self.back
+                }
+            ],
+            disable_security=True
+        )
+
     async def back(self, call):
         await call.answer("Ты нажал кнопку!")
