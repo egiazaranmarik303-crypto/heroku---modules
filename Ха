@@ -1,10 +1,14 @@
 from .. import loader, utils
 class MyModule(loader.Module):
-    """my first module"""
+    ""my first module""
     strings = {
         "name": "module"
     }
 
     @loader.command()
-    async def hello(self,message):
-        await utils.answer(message, "ПРИВЕТ!")
+    async def say(self,message):
+        arg = utils.get_args(message)
+        if not arg:
+            await utils.answer(message,"Пустой!")
+        else:
+            await utils.answer(message, arg)
