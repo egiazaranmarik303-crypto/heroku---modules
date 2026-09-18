@@ -1,15 +1,17 @@
 from .. import loader, utils
 from telethon import Button
+
 @loader.tds
 class MemoryModule(loader.Module):
     """Memory Module"""
     strings = {
-        "name": "Memory Module",
+        "name": "Mark",
         "empty": "Message is empty!",
         "noinfo": "There is nonting in memory!",
         "success": "Message was saved!",
         "toolong": "Too long!"
     }
+    
     def __init__(self):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
@@ -19,6 +21,7 @@ class MemoryModule(loader.Module):
                 validator=loader.validators.Integer(minimum=1)
             )
         )
+        
     @loader.command()
     async def record(self,message):
         """MRecord info"""
@@ -39,6 +42,7 @@ class MemoryModule(loader.Module):
             await utils.answer(message1,self.strings["noinfo"])
         else:
             await utils.answer(message1,text1)
+            
     @loader.command()
     async def reset(self,message2):
         """Reset info"""
@@ -47,7 +51,11 @@ class MemoryModule(loader.Module):
     @loader.command()
     async def button(self,message):
         """Button info"""
-        await message.respond(
-            "Нажми кнопку!",
-            buttons=[[Button.inline("Yes", data="click")]]
-        )
+        
+        @loader.command()
+        async def button(self, message):
+            """Button info"""
+            await message.respond(
+                "TEST",
+                buttons=[[Button.inline("Yes", data=b"click")]]
+            )
