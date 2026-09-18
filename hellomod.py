@@ -45,18 +45,15 @@ class MemoryModule(loader.Module):
 
     @loader.command()
     async def button(self, message):
-        """Button info"""
-
-        markup = types.ReplyInlineMarkup([
-            types.KeyboardButtonRow([
-                Button.inline("Нажми меня", data=b"click")
-            ])
-        ])
-
-        await message.client(
-            functions.messages.SendMessageRequest(
-                peer=message.peer_id,
-                message="Тестовая кнопка:",
-                reply_markup=markup
-            )
-        )
+        """хыхвхывхы"""
+        await self.inline.form(
+    text="Нажми кнопку",
+    message=message,
+    reply_markup=[
+        {
+            "text": "Click",
+            "callback": self.back
+        }
+    ],
+    disable_security=True
+)
