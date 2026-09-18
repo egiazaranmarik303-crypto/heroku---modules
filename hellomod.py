@@ -46,16 +46,17 @@ class MemoryModule(loader.Module):
     @loader.command()
     async def button(self, message):
         """Button info"""
+
         markup = types.ReplyInlineMarkup([
             types.KeyboardButtonRow([
-                Button.inline("Yes", data=b"click")
+                Button.inline("Нажми меня", data=b"click")
             ])
         ])
 
         await message.client(
             functions.messages.SendMessageRequest(
                 peer=message.peer_id,
-                message="TEST",
+                message="Тестовая кнопка:",
                 reply_markup=markup
             )
         )
