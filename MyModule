@@ -19,7 +19,7 @@ class Module(loader.Module):
             self.db.set(self.strings["name"],"saved_un", friend)
 
     @loader.command()
-    async def pingfriend(self,message):
+    async def friendcheck(self,message):
         friend = self.db.get(self.strings["name"],"saved_un")
         if not friend:
             await utils.answer(message,self.strings["no_un"])
