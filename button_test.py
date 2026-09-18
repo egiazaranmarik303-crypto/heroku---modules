@@ -1,5 +1,5 @@
 from .. import loader, utils
-from telethon import Button
+from telethon import Button, types
 
 @loader.tds
 class MemoryModule(loader.Module):
