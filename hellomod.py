@@ -1,5 +1,5 @@
 from .. import loader, utils
-from telethon import Button
+from telethon import Button,types,functions
 
 @loader.tds
 class MemoryModule(loader.Module):
@@ -44,17 +44,18 @@ class MemoryModule(loader.Module):
             await utils.answer(message1,text1)
 
     @loader.command()
-    async def reset(self,message2):
-        """Reset info"""
-        self.db.set(self.strings["name"],"savedtext", None)
-        await utils.answer(message2,"Successfully reset!")
-
-
-    @loader.command()
     async def button(self, message):
         """Button info"""
-        await message.client.send_message(
-            message.peer_id,
-            "TEST",
-            buttons=[[Button.inline("Yes", data=b"click")]]
+        markup = types.ReplyInlineMarkup([
+            types.KeyboardButtonRow([
+                Button.inline("Yes", data=b"click")
+            ])
+        ])
+
+        await message.client(
+            functions.messages.SendMessageRequest(
+                peer=message.peer_id,
+                message="TEST",
+                reply_markup=markup
+            )
         )
