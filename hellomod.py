@@ -1,5 +1,4 @@
 from .. import loader, utils
-from telethon import Button,types,functions
 
 @loader.tds
 class MemoryModule(loader.Module):
@@ -57,3 +56,6 @@ class MemoryModule(loader.Module):
     ],
     disable_security=True
 )
+  
+    async def back(self, call):
+        await call.answer("Ты нажал кнопку!")
