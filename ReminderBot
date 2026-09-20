@@ -1,5 +1,3 @@
-#meta developer: @friendsforeveruwu
-#meta banner: https://i.pinimg.com/originals/b1/75/5a/b1755ad2b12943dcad3842aeefd4e6cc.jpg?nii=t
 from .. import utils, loader
 import asyncio
 @loader.tds
