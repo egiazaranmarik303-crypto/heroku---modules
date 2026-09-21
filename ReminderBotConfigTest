@@ -1,120 +1,121 @@
-#meta developer: @friendsforeveruwu  
-#meta banner: https://i.pinimg.com/originals/b1/75/5a/b1755ad2b12943dcad3842aeefd4e6cc.jpg?nii=t  
-from .. import utils, loader  
-import asyncio  
-@loader.tds  
-class ReminderBot(loader.Module):  
-    """Модуль для напоминаний через инлайн - бота"""  
-    strings = {  
-        "name": "ReminderBot",  
-        "nosave": "Nothing is saved!",  
-        "nonesave": "Nothing to save!",  
-        "save_success": "Saved successfully!",  
-        "on": "Turned on reminder!",  
-        "nostat": "Reminder is off!",  
-        "stop_success": "Stopped reminder!",  
-        "toolow": "Too low for reminder!",  
-        "error": "Error occured, please contact the developer! (@friendsforeveruwu)"  
-    }  
-    def __init__(self):  
-        self.config = loader.ModuleConfig(  
-            loader.Config(  
-                "Min_time",  
-                "10",  
-                "Ограничение минимального времени",  
-                validator=loader.validators.Integer(minimum=1)  
-            )  
-        )  
-    async def client_ready(self, client, db):  
-        self.client = client  
-        self.me = await client.get_me()  
-        self.running = False  
-  
-    @loader.command()  
-    async def setreminder(self,message):  
-        """Установить напоминание"""  
-        try:  
-            reminder = utils.get_args_raw(message)  
-            if not reminder:  
-                await utils.answer(message,self.strings["nonesave"])  
-            else:  
-                self.db.set(self.strings["name"],"reminder", reminder)  
-                await utils.answer(message,self.strings["save_success"])  
-        except:  
-            await utils.answer(message,self.strings["error"])  
-    @loader.command()  
-    async def settime(self,message):  
-        """Установить время (в секундах!). Преобразует в int"""  
-        try:  
-            time = utils.get_args_raw(message)  
-            if not time:  
-                await utils.answer(message,self.strings["nonesave"])  
-                return  
-            else:  
-                try:  
-                    time = int(time)  
-                except ValueError:  
-                    await utils.answer(message,self.strings["nonesave"])  
-                    return  
-                if time < self.config.min_time:  
-                    await utils.answer(message,self.strings["toolow"])  
-                    return  
-                self.db.set(self.strings["name"],"time", (time))  
-                await utils.answer(message,self.strings["save_success"])  
-        except:  
-         await utils.answer(message,self.strings["error"])  
-  
-  
-    @loader.command()  
-    async def start(self,message):  
-        """Включить напоминания"""  
-        try:  
-            reminder = self.db.get(self.strings["name"], "reminder")  
-            time = self.db.get(self.strings["name"], "time")  
-            if not reminder:  
-                await utils.answer(message,self.strings["nosave"])  
-            elif not time:  
-                await utils.answer(message,self.strings["nonesave"])  
-            else:  
-                self.running = True  
-                asyncio.create_task(self._loop())  
-                await utils.answer(message,self.strings["on"])  
-        except:  
-            await utils.answer(message,self.strings["error"])  
-  
-  
-    async def _loop(self):  
-        try:  
-            while self.running:  
-                reminder = self.db.get(self.strings["name"], "reminder")  
-                time = self.db.get(self.strings["name"], "time")  
-                if not time:  
-                    self.running = False  
-                    return  
-                elif not reminder:  
-                    self.running = False  
-                    return  
-                else:  
-                    await self.inline.bot.send_message(self.me.id,reminder)  
-                    await asyncio.sleep(time)  
-        except Exception:  
-            await self.inline.bot.send_message(self.me.id,self.strings["error"])  
-            self.running = False  
-  
-    @loader.command()  
-    async def stop(self,message):  
-        """Выключить напоминания"""  
-        try:  
-            if not self.running:  
-                await utils.answer(message,self.strings["nostat"])  
-            else:  
-                await utils.answer(message,self.strings["stop_success"])  
-                self.running = False  
-        except:  
-            await utils.answer(message,self.strings["error"])  
-  
-    @loader.command()  
-    async def reset(self,message):  
-        """Исключительно для разрабаба. Игнорьте"""  
-        self.running = False  
-  
+#meta developer: @friendsforeveruwu
+#meta banner: https://i.pinimg.com/originals/b1/75/5a/b1755ad2b12943dcad3842aeefd4e6cc.jpg?nii=t
+from .. import utils, loader
+import asyncio
+
+@loader.tds
+class ReminderBot(loader.Module):
+    """Модуль для напоминаний через инлайн - бота"""
+    strings = {
+        "name": "ReminderBot",
+        "nosave": "Nothing is saved!",
+        "nonesave": "Nothing to save!",
+        "save_success": "Saved successfully!",
+        "on": "Turned on reminder!",
+        "nostat": "Reminder is off!",
+        "stop_success": "Stopped reminder!",
+        "toolow": "Too low for reminder!",
+        "error": "Error occured, please contact the developer! (@friendsforeveruwu)"
+    }
+
+    def __init__(self):
+        self.config = loader.ModuleConfig(
+            loader.ConfigValue(
+                "Min_time",
+                10,
+                "Ограничение минимального времени",
+                validator=loader.validators.Integer(minimum=1)
+            )
+        )
+
+    async def client_ready(self, client, db):
+        self.client = client
+        self.me = await client.get_me()
+        self.running = False
+
+    @loader.command()
+    async def setreminder(self, message):
+        """Установить напоминание"""
+        try:
+            reminder = utils.get_args_raw(message)
+            if not reminder:
+                await utils.answer(message, self.strings["nonesave"])
+            else:
+                self.db.set(self.strings["name"], "reminder", reminder)
+                await utils.answer(message, self.strings["save_success"])
+        except Exception:
+            await utils.answer(message, self.strings["error"])
+
+    @loader.command()
+    async def settime(self, message):
+        """Установить время (в секундах!). Преобразует в int"""
+        try:
+            time = utils.get_args_raw(message)
+            if not time:
+                await utils.answer(message, self.strings["nonesave"])
+                return
+            else:
+                try:
+                    time = int(time)
+                except ValueError:
+                    await utils.answer(message, self.strings["nonesave"])
+                    return
+                if time < self.config["Min_time"]:
+                    await utils.answer(message, self.strings["toolow"])
+                    return
+                self.db.set(self.strings["name"], "time", time)
+                await utils.answer(message, self.strings["save_success"])
+        except Exception:
+            await utils.answer(message, self.strings["error"])
+
+    @loader.command()
+    async def start(self, message):
+        """Включить напоминания"""
+        try:
+            reminder = self.db.get(self.strings["name"], "reminder")
+            time = self.db.get(self.strings["name"], "time")
+            if not reminder:
+                await utils.answer(message, self.strings["nosave"])
+            elif not time:
+                await utils.answer(message, self.strings["nonesave"])
+            else:
+                self.running = True
+                asyncio.create_task(self._loop())
+                await utils.answer(message, self.strings["on"])
+        except Exception:
+            await utils.answer(message, self.strings["error"])
+
+    async def _loop(self):
+        try:
+            while self.running:
+                reminder = self.db.get(self.strings["name"], "reminder")
+                time = self.db.get(self.strings["name"], "time")
+                if not time:
+                    self.running = False
+                    return
+                elif not reminder:
+                    self.running = False
+                    return
+                else:
+                    await self.inline.bot.send_message(self.me.id, reminder)
+                    await asyncio.sleep(time)
+        except Exception:
+            await self.inline.bot.send_message(self.me.id, self.strings["error"])
+            self.running = False
+
+    @loader.command()
+    async def stop(self, message):
+        """Выключить напоминания"""
+        try:
+            if not self.running:
+                await utils.answer(message, self.strings["nostat"])
+            else:
+                await utils.answer(message, self.strings["stop_success"])
+                self.running = False
+        except Exception:
+            await utils.answer(message, self.strings["error"])
+
+    @loader.command()
+    async def reset(self, message):
+        """Исключительно для разработчика. Игнорьте"""
+        self.running = False
