@@ -1,0 +1,35 @@
+from .. import utils, loader
+
+@loader.tds
+class CatCounter(loader.Module):
+    """CatCounterModule!"""
+    strings = {
+        "name": "CatCounter",
+        "+": "+1"
+    }
+
+    def __init__(self):
+        self.config = loader.ModuleConfig(
+            loader.ConfigValue(
+                "Notify",
+                False,
+                "Уведомление об увеличении счётчика",
+                validator=loader.validators.Boolean()
+            )
+        )
+
+    @loader.watcher(no_commands=True)
+    async def catcounter(self, message):
+        if "кот" in message.raw_text.lower():
+            count = self.db.get(self.strings["name"], "CatCounter", 0)
+            count += 1
+            self.db.set(self.strings["name"], "CatCounter", count)
+
+            if self.config["Notify"]:
+                await utils.answer(message, self.strings["+"])
+
+    @loader.command()
+    async def cat(self, message):
+        """View counter"""
+        counter = self.db.get(self.strings["name"], "CatCounter", 0)
+        await utils.answer(message, str(counter))
