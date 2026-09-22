@@ -26,10 +26,16 @@ class CatCounter(loader.Module):
             self.db.set(self.strings["name"], "CatCounter", count)
 
             if self.config["Notify"]:
-                await utils.answer(message, self.strings["+"])
+                await message.reply(self.strings["+"])
 
     @loader.command()
     async def cat(self, message):
         """View counter"""
         counter = self.db.get(self.strings["name"], "CatCounter", 0)
         await utils.answer(message, str(counter))
+        
+    @loader.command()
+    async def resetcat(self, message):
+        """Reset counter"""
+        self.db.set(self.strings["name"], "CatCounter", 0)
+        await message.reply("Готово!")
