@@ -1,7 +1,8 @@
-#meta developer: @friendsforeveruwu
-#meta banner: https://i.pinimg.com/originals/b1/75/5a/b1755ad2b12943dcad3842aeefd4e6cc.jpg?nii=t
+# meta developer: @friendsforeveruwu
+# meta banner: https://i.pinimg.com/originals/b1/75/5a/b1755ad2b12943dcad3842aeefd4e6cc.jpg?nii=t
 from .. import utils, loader
 import asyncio
+
 
 @loader.tds
 class ReminderBot(loader.Module):
@@ -10,11 +11,12 @@ class ReminderBot(loader.Module):
         "name": "ReminderBot",
         "nosave": "Nothing is saved!",
         "nonesave": "Nothing to save!",
+        "noint": "Incorrect number!",
         "save_success": "Saved successfully!",
         "on": "Turned on reminder!",
         "nostat": "Reminder is off!",
         "stop_success": "Stopped reminder!",
-        "toolow": "Too low for reminder!",
+        "toolow": "Time is too low!",
         "error": "Error occured, please contact the developer! (@friendsforeveruwu)"
     }
 
@@ -33,51 +35,13 @@ class ReminderBot(loader.Module):
         self.me = await client.get_me()
         self.running = False
 
+
     @loader.command()
     async def setreminder(self, message):
-        """Установить напоминание"""
-        try:
-            reminder = utils.get_args_raw(message)
-            if not reminder:
-                await utils.answer(message, self.strings["nonesave"])
-            else:
-                self.db.set(self.strings["name"], "reminder", reminder)
-                await utils.answer(message, self.strings["save_success"])
-        except Exception:
-            await utils.answer(message, self.strings["error"])
-
-    @loader.command()
-    async def settreminder(self, message):
-        """Установить напоминание"""
-        try:
-            args = utils.get_args(message)
-            if not args:
-                await utils.answer(message, self.strings["nonesave"])
-                return
-            time = args[0]
-            try:
-                time = int(time)
-            except ValueError:
-                await utils.answer(message, self.strings["nonesave"])
-                return
-            reminder = " ".join(args[1:])
-            if not reminder:
-                await utils.answer(message, self.strings["nonesave"])
-                return
-            elif time < self.config["Min_time"]:
-                await utils.answer(message, self.strings["toolow"])
-                return
-            else:
-                self.db.set(self.strings["name"], "reminder", reminder)
-                self.db.set(self.strings["name"], "time", time)
-                await utils.answer(message, self.strings["save_success"])
-        except Exception:
-            await utils.answer(message,self.strings["error"])
-            return
-
-    @loader.command()
-    async def settreminderr(self, message):
-        """Установить напоминание"""
+        """Установить напоминание
+        setreminder время текст
+        s,sec - в секундах, h,hour,hours - в часах, d,day,days - в днях"""
+        
         try:
             args = utils.get_args(message)
             if not args:
@@ -94,7 +58,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["nonint"])
                     return
 
             elif time.endswith("m"):
@@ -102,7 +66,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 60
 
@@ -111,7 +75,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 60
 
@@ -120,7 +84,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 60
 
@@ -129,7 +93,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 3600
 
@@ -138,7 +102,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 3600
 
@@ -147,7 +111,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 3600
 
@@ -156,7 +120,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 86400
 
@@ -165,7 +129,7 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 86400
 
@@ -174,58 +138,28 @@ class ReminderBot(loader.Module):
                 try:
                     time = int(time)
                 except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
+                    await utils.answer(message, self.strings["noint"])
                     return
                 time = time * 86400
 
             else:
-                await utils.answer(message,self.strings["nonesave"])
+                await utils.answer(message, self.strings["nonesave"])
                 return
 
             reminder = " ".join(args[1:])
-
             if time < self.config["Min_time"]:
                 await utils.answer(message, self.strings["toolow"])
                 return
-
             elif not reminder:
                 await utils.answer(message, self.strings["nosave"])
                 return
             else:
-                self.db.set(self.strings["name"],"reminder", reminder)
-                self.db.set(self.strings["name"],"time",time)
-                await utils.answer(message, self.strings["save_success"])
-        except Exception:
-            await utils.answer(message,self.strings["error"])
-
-
-
-
-
-
-
-
-    @loader.command()
-    async def settime(self, message):
-        """Установить время (в секундах!). Преобразует в int"""
-        try:
-            time = utils.get_args_raw(message)
-            if not time:
-                await utils.answer(message, self.strings["nonesave"])
-                return
-            else:
-                try:
-                    time = int(time)
-                except ValueError:
-                    await utils.answer(message, self.strings["nonesave"])
-                    return
-                if time < self.config["Min_time"]:
-                    await utils.answer(message, self.strings["toolow"])
-                    return
+                self.db.set(self.strings["name"], "reminder", reminder)
                 self.db.set(self.strings["name"], "time", time)
                 await utils.answer(message, self.strings["save_success"])
         except Exception:
             await utils.answer(message, self.strings["error"])
+
 
     @loader.command()
     async def start(self, message):
@@ -280,7 +214,7 @@ class ReminderBot(loader.Module):
         self.running = False
         time = 0
         reminder = None
-        await utils.answer(message,"Good bro!")
+        await utils.answer(message, "Good bro!")
 
     @loader.command()
     async def showper(self, message):
