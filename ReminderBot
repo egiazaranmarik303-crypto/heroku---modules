@@ -1,0 +1,119 @@
+# meta developer: @friendsforeveruwu
+# meta banner: https://i.pinimg.com/originals/b1/75/5a/b1755ad2b12943dcad3842aeefd4e6cc.jpg?nii=t
+from .. import utils, loader
+import asyncio
+
+
+@loader.tds
+class ReminderBot(loader.Module):
+    """Модуль для напоминаний через инлайн - бота"""
+    strings = {
+        "name": "ReminderBot",
+        "nosave": "Nothing is saved!",
+        "nonesave": "Nothing to save!",
+        "noint": "Incorrect number!",
+        "notext": "Text for reminder is invalid!",
+        "save_success": "Saved successfully!",
+        "on": "Turned on reminder!",
+        "nostat": "Reminder is off!",
+        "stop_success": "Stopped reminder!",
+        "toolow": "Time is too low!",
+        "null": "Empty message!",
+        "error": "Error occured, please contact the developer! (@friendsforeveruwu)"
+    }
+
+    timeunits = {
+        "mins": 60,
+        "min": 60,
+        "m": 60,
+        "hours": 3600,
+        "hour": 3600,
+        "h": 3600,
+        "days": 86400,
+        "day": 86400,
+        "d": 86400,
+        "sec": 1,
+        "s": 1,
+    }
+
+    def __init__(self):
+        self.config = loader.ModuleConfig(
+            loader.ConfigValue(
+                "Min_time",
+                10,
+                "Ограничение минимального времени",
+                validator=loader.validators.Integer(minimum=1)
+            )
+        )
+
+    async def client_ready(self, client, db):
+        self.client = client
+        self.me = await client.get_me()
+        self.running = False
+
+
+    @loader.command()
+    async def setreminder(self, message):
+        """Установить напоминание:
+        .setreminder [время] [текст]
+       s,sec m,min,mins h,hour,hours d,day,day"""
+        try:
+            args = utils.get_args(message)
+
+            if not args:
+                await utils.answer(message, self.strings["null"])
+                return
+
+            raw_time = args[0]
+            seconds = None
+
+            for suffix, multiplier in self.timeunits.items():
+                if raw_time.endswith(suffix):
+                    try:
+                        number = int(raw_time[:-len(suffix)])
+                    except ValueError:
+                        await utils.answer(message, self.strings["noint"])
+                        return
+                    seconds = number * multiplier
+                    break
+
+            if seconds is None and raw_time.isdigit():
+                try:
+                    time = int(raw_time)
+                except ValueError:
+                    await utils.answer(message, self.strings["noint"])
+                    return
+            elif seconds is None:
+                await utils.answer(message, self.strings["noint"])
+                return
+            else:
+                time = seconds
+
+            reminder = " ".join(args[1:])
+
+            if not reminder:
+                await utils.answer(message,self.strings["notext"])
+                return
+            
+            if time < self.config["Min_time"]:
+                await utils.answer(message, self.strings["toolow"])
+                return
+
+            self.db.set(self.strings["name"], "time", time)
+            self.db.set(self.strings["name"], "reminder", reminder)
+            await utils.answer(message,self.strings["save_success"])
+        except Exception:
+            await utils.answer(message, self.strings["error"])
+
+
+    @loader.command()
+    async def stop(self, message):
+        """Выключить напоминания"""
+        try:
+            if not self.running:
+                await utils.answer(message, self.strings["nostat"])
+            else:
+                await utils.answer(message, self.strings["stop_success"])
+                self.running = False
+        except Exception:
+            await utils.answer(message, self.strings["error"])
