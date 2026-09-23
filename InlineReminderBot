@@ -56,7 +56,7 @@ class ReminderBot(loader.Module):
     async def setreminder(self, message):
         """Установить напоминание:
         .setreminder [время] [текст]
-       s,sec m,min,mins h,hour,hours d,day,day"""
+       s,sec m,min,mins h,hour,hours d,day,days"""
         try:
             args = utils.get_args(message)
 
