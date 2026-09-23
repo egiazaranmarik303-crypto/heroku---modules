@@ -1,0 +1,16 @@
+# packurl: https://raw.githubusercontent.com/egiazaranmarik303-crypto/heroku---modules/refs/heads/main/testYAMAL
+
+from .. import loader, utils
+
+@loader.tds
+class TestMod(loader.Module):
+    """Тестовый модуль для проверки бага translations"""
+    strings = {
+        "name": "TestMod",
+        "hello": "Hi! (fallback)"
+    }
+
+    @loader.command()
+    async def testhello(self, message):
+        """Тест"""
+        await utils.answer(message, self.strings["hello"])
