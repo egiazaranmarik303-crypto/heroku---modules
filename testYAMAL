@@ -1,0 +1,6 @@
+en:
+  testmod:
+    hello: "Hi!"
+ru:
+  testmod:
+    hello: "Привет!"
