@@ -56,7 +56,7 @@ class ReminderBot(loader.Module):
                 return
             time = args[0]
             try:
-                int(time)
+                time = int(time)
             except ValueError:
                 await utils.answer(message, self.strings["nonesave"])
                 return
@@ -64,10 +64,14 @@ class ReminderBot(loader.Module):
             if not reminder:
                 await utils.answer(message, self.strings["nonesave"])
                 return
-            self.db.set(self.strings["name"], "reminder", reminder)
-            self.db.set(self.strings["name"], "time", time)
-            await utiils.answer(message, self.strings["save_success"])
-            
+            elif time < self.config["Min_time"]:
+                await utils.answer(message, self.strings["toolow"])
+                return
+            else:
+                self.db.set(self.strings["name"], "reminder", reminder)
+                self.db.set(self.strings["name"], "time", time)
+                await utils.answer(message, self.strings["save_success"])
+
         except Exception:
             await utils.answer(message, self.strings["error"])
 
