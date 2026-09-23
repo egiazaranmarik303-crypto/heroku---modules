@@ -3,10 +3,10 @@
 from .. import loader, utils
 
 @loader.tds
-class TestMod(loader.Module):
+class LANGUAY(loader.Module):
     """Тестовый модуль для проверки бага translations"""
     strings = {
-        "name": "TestMod",
+        "name": "LanGuy",
         "hello": "Hi! (fallback)"
     }
 
