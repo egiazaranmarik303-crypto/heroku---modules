@@ -278,15 +278,13 @@ class ReminderBot(loader.Module):
     async def reset(self, message):
         """Исключительно для разработчика. Игнорьте"""
         self.running = False
+        time = 0
+        reminder = None
         await utils.answer(message,"Good bro!")
 
     @loader.command()
     async def showper(self, message):
         """исключительно для разраба. Игнорьте"""
-        args = utils.get_args_raw(message)
-        if not args:
-            await utils.answer(message, self.strings["nonesave"])
-        else:
-            reminder = self.db.get(self.strings["name"], "reminder")
-            time = self.db.get(self.strings["name"], "time")
-            await utils.answer(message, f"Время - {time}, текст - {reminder}, работа - {self.running}")
+        reminder = self.db.get(self.strings["name"], "reminder")
+        time = self.db.get(self.strings["name"], "time")
+        await utils.answer(message, f"Время - {time}, текст - {reminder}, работа - {self.running}")
