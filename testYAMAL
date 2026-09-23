@@ -1,6 +1,6 @@
 en:
-  testmod:
+  LanGuy:
     hello: "Hi!"
 ru:
-  testmod:
+  LanGuy:
     hello: "Привет!"
