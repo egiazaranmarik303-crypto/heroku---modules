@@ -1,4 +1,4 @@
-from .. import loader
+from .. import loader, utils
 
 
 @loader.tds
@@ -6,7 +6,7 @@ class TestLoop(loader.Module):
 
     @loader.loop(interval=1, autostart=False)
     async def my_loop(self):
-        print("LOOP работает!")
+        await utils.respond("РРРРР")
         async sleep(3)
 
     @loader.command()
