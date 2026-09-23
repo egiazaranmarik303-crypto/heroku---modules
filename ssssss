@@ -1,0 +1,20 @@
+from .. import loader
+
+
+@loader.tds
+class TestLoop(loader.Module):
+
+    @loader.loop(interval=1, autostart=False)
+    async def my_loop(self):
+        print("LOOP работает!")
+        async sleep(3)
+
+    @loader.command()
+    async def start(self, message):
+        self.my_loop.start()
+        await message.edit("Loop запущен!")
+
+    @loader.command()
+    async def stop(self, message):
+        self.my_loop.stop()
+        await message.edit("Loop остановлен!")
