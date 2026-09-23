@@ -1,11 +1,10 @@
-import asyncio
 from .. import loader, utils
 
 
 @loader.tds
 class TestLoop(loader.Module):
 
-    @loader.loop(interval=5, autostart=False)
+    @loader.loop(interval=3, autostart=False)
     async def my_loop(self):
         await self.client.send_message(self.chat_id, "РРРРР")
 
@@ -19,3 +18,4 @@ class TestLoop(loader.Module):
     async def stop(self, message):
         self.my_loop.stop()
         await message.edit("Loop остановлен!")
+
