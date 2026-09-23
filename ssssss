@@ -9,13 +9,13 @@ class TestLoop(loader.Module):
         await self.client.send_message(self.chat_id, "РРРРР")
 
     @loader.command()
-    async def start(self, message):
+    async def starts(self, message):
         self.chat_id = message.chat_id
         self.my_loop.start()
         await message.edit("Loop запущен!")
 
     @loader.command()
-    async def stop(self, message):
+    async def stops(self, message):
         self.my_loop.stop()
         await message.edit("Loop остановлен!")
 
