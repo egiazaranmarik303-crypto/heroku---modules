@@ -11,6 +11,6 @@ class LANGUAY(loader.Module):
     }
 
     @loader.command()
-    async def testhello(self, message):
+    async def hello(self, message):
         """Тест"""
         await utils.answer(message, self.strings["hello"])
