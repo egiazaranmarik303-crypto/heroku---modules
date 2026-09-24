@@ -1,0 +1,57 @@
+#meta developer: @friendsforeveruwu
+from .. import loader,utils
+@loader.tds
+class MemorySlots(loader.Module):
+    """Just simple memory slots!"""
+    strings = {
+        "name": "Memory Slots",
+        "none_saved": "Nothing is saved in this slot!"
+    }
+    def __init__(self):
+        self.config = loader.ModuleConfig(
+
+        loader.ConfigValue(
+            "Slot 1",
+            "I belive in Myself!",
+            "First slot",
+            validator = loader.validators.String()
+        ),
+        loader.ConfigValue(
+            "Slot 2",
+            "I am proud of myself!",
+            "Second slot",
+            validator=loader.validators.String()
+        ),
+        loader.ConfigValue(
+            "Slot 3",
+            "Just start..?",
+            "Third slot",
+            validator=loader.validators.String()
+        ),
+        loader.ConfigValue(
+            "Slot 4",
+            "@friendsforeveruwu",
+            "Fourth slot",
+            validator=loader.validators.String()
+        )
+      )
+
+    @loader.command()
+    async def m1(self, message):
+        """Slot 1"""
+        await message.edit(self.config["Slot 1"])
+
+    @loader.command()
+    async def m2(self, message):
+        """Slot 2"""
+        await message.edit(self.config["Slot 2"])
+
+    @loader.command()
+    async def m3(self, message):
+        """Slot 3"""
+        await message.edit(self.config["Slot 3"])
+
+    @loader.command()
+    async def m4(self, message):
+        """Slot 4"""
+        await message.edit(self.config["Slot 4"])
