@@ -12,5 +12,5 @@ class Excuses(loader.Module):
 
     @loader.command()
     async def excuse(self,message):
-        words = random.choice(excuses)
+        words = random.choice(self.excuses)
         await utils.answer(message,words)
