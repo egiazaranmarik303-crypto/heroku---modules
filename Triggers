@@ -1,0 +1,129 @@
+#meta developer: @friendsforeveruwu
+from .. import loader,utils
+
+
+
+@loader.tds
+class Triggers(loader.Module):
+    """Triggers"""
+
+    def __init__ (self):
+        self.config = loader.ModuleConfig(
+            loader.ConfigValue(
+                "Accurate Triggers",
+                False,
+                "Whether the triggers should be accurate or not",
+                validator = loader.validators.Boolean()
+            ),
+            loader.ConfigValue(
+                "Separator",
+                "/",
+                "Set separator",
+                validator = loader.validators.String()
+            )
+        )
+
+    strings = {
+        "name": "Triggers",
+        "nosave": "Nothins saved!",
+        "nonesave": "Nothing is saved!",
+        "empty": "Message is empty!",
+        "nosep": "No saved separator!",
+        "delsuc": "Deleted successfully!",
+        "savesuc": "Saved successfully!\n"
+                   "Trigger: {}\n"
+                   "Answer: {}",
+        "error": "Error occurred! Please contact the developer(@friendsforeveruwu)!",
+        "example": "Example of the command:\n"
+                   ".settrigger [trigger] / [answer]\n"
+                   "/ - is a separator you can set up in the config menu"
+    }
+
+    @loader.command()
+    async def settrigger(self, message):
+        """Set triggers:
+        .settrigger [trigger] / [answer]"""
+        try:
+            triggers = self.db.get(self.strings["name"], "Triggers",{})
+            separator = self.config["Separator"]
+            msg = utils.get_args_raw(message)
+            if not msg:
+                await utils.answer(message, self.strings["empty"])
+                return
+            elif not separator:
+                await utils.answer(message, self.strings["nosep"])
+                return
+            trigger,answer = msg.split(separator,1)
+            trigger = trigger.strip()
+            answer = answer.strip()
+            triggers[trigger] = answer
+            self.db.set(self.strings["name"], "Triggers", triggers)
+            await utils.answer(message, self.strings["savesuc"].format(trigger,answer))
+        except ValueError:
+            await utils.answer(message, self.strings["error"])
+            await utils.respond(self.strings["example"])
+            return
+
+    @loader.command()
+    async def example(self, message):
+        """Example for .settrigger"""
+        await utils.answer(message,self.strings["example"])
+
+    @loader.command()
+    async def triggers(self, message):
+        """List of all triggers"""
+        triggers = self.db.get(self.strings["name"], "Triggers", {})
+        if not triggers:
+            await utils.answer(message, self.strings["nonesave"])
+            return
+        text = ""
+        for trigger,answer in triggers.items():
+            text += f"{trigger} => {answer}\n"
+        await utils.answer(message,text)
+
+    @loader.command()
+    async def deltrig(self, message):
+        """Delete trigger:
+        .deltrig [trigger]"""
+        msg = utils.get_args_raw(message)
+        triggers = self.db.get(self.strings["name"], "Triggers", {})
+
+        if not msg:
+            await utils.answer(message, self.strings["empty"])
+            return
+        elif not msg in triggers:
+            await utils.answer(message, self.strings["nosave"])
+            return
+
+        del triggers[msg]
+        self.db.set(self.strings["name"], "Triggers", triggers)
+        await utils.answer(message, self.strings["delsuc"])
+
+
+
+    @loader.watcher(no_commands=True)
+    async def run(self,message):
+
+        if not message.raw_text:
+            return
+        triggers = self.db.get(self.strings["name"], "Triggers", {})
+
+        if self.config["Accurate Triggers"]:
+            msg = message.raw_text
+        else:
+            msg = message.raw_text.lower()
+
+        for trigger,answer in triggers.items():
+            if self.config["Accurate Triggers"]:
+                if trigger == msg:
+                    await utils.answer(message, answer)
+            else:
+                if trigger.lower() in msg:
+                    await utils.answer(message, answer)
+
+
+
+
+
+
+
