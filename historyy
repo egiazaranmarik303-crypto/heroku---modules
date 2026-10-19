@@ -1,0 +1,309 @@
+
+# meta developer: Mark
+
+from .. import loader,utils 
+from telethon import events
+
+
+@loader.tds
+class WatchHistoryMod(loader.Module):
+    """Сохранение истории сообщений и отслеживание изменений."""
+
+    strings = {"name": "WatchHistory"}
+
+    MAX_HISTORY = 100
+    MAX_CHANGES = 200
+
+    async def client_ready(self, client, db):
+        self.client = client
+
+        if self.get("watched", None) is None:
+            self.set("watched", [])
+
+        if self.get("history", None) is None:
+            self.set("history", {})
+
+        if self.get("changes", None) is None:
+            self.set("changes", {})
+
+        # Не регистрируем обработчики повторно
+        self.client.remove_event_handler(self._on_new_message)
+        self.client.remove_event_handler(self._on_edit)
+        self.client.remove_event_handler(self._on_delete)
+
+        self.client.add_event_handler(
+            self._on_new_message, events.NewMessage()
+        )
+        self.client.add_event_handler(
+            self._on_edit, events.MessageEdited()
+        )
+        self.client.add_event_handler(
+            self._on_delete, events.MessageDeleted()
+        )
+
+    def on_unload(self):
+        if hasattr(self, "client"):
+            self.client.remove_event_handler(self._on_new_message)
+            self.client.remove_event_handler(self._on_edit)
+            self.client.remove_event_handler(self._on_delete)
+
+    def _get_history(self):
+        return self.get("history", {})
+
+    def _get_changes(self):
+        return self.get("changes", {})
+
+    def _log_change(self, chat_id, entry):
+        changes = self._get_changes()
+        key = str(chat_id)
+
+        changes.setdefault(key, []).append(entry)
+        changes[key] = changes[key][-self.MAX_CHANGES:]
+
+        self.set("changes", changes)
+
+    def _save_message(self, message):
+        chat_id = message.chat_id
+
+        if chat_id is None:
+            return
+
+        history = self._get_history()
+        key = str(chat_id)
+        records = history.setdefault(key, [])
+
+        text = message.raw_text or ""
+        message_id = message.id
+
+        # Не создаём дубликаты одного сообщения
+        for record in records:
+            if record["id"] == message_id:
+                if record["text"] != text:
+                    self._log_change(chat_id, {
+                        "id": message_id,
+                        "type": "edit",
+                        "old": record["text"],
+                        "new": text,
+                    })
+                    record["text"] = text
+
+                record["deleted"] = False
+                history[key] = records[-self.MAX_HISTORY:]
+                self.set("history", history)
+                return
+
+        records.append({
+            "id": message_id,
+            "text": text,
+            "date": str(message.date),
+            "deleted": False,
+        })
+
+        records.sort(key=lambda item: item["id"])
+        history[key] = records[-self.MAX_HISTORY:]
+        self.set("history", history)
+
+    async def _on_new_message(self, event):
+        chat_id = event.chat_id
+
+        if chat_id is None:
+            return
+
+        if chat_id not in self.get("watched", []):
+            return
+
+        self._save_message(event.message)
+
+    async def _on_edit(self, event):
+        chat_id = event.chat_id
+
+        if chat_id is None:
+            return
+
+        if chat_id not in self.get("watched", []):
+            return
+
+        self._save_message(event.message)
+
+    async def _on_delete(self, event):
+        chat_id = event.chat_id
+
+        # В некоторых уведомлениях об удалении Telegram
+        # не указывает чат, поэтому восстановить его не всегда можно.
+        if chat_id is None:
+            return
+
+        if chat_id not in self.get("watched", []):
+            return
+
+        history = self._get_history()
+        key = str(chat_id)
+        records = history.get(key, [])
+
+        for message_id in event.deleted_ids:
+            for record in records:
+                if record["id"] == message_id:
+                    if not record.get("deleted", False):
+                        record["deleted"] = True
+                        self._log_change(chat_id, {
+                            "id": message_id,
+                            "type": "delete",
+                            "text": record["text"],
+                        })
+
+        history[key] = records
+        self.set("history", history)
+
+    async def _import_history(self, chat_id):
+        count = 0
+
+        async for message in self.client.iter_messages(
+            chat_id, limit=self.MAX_HISTORY
+        ):
+            if message.id:
+                self._save_message(message)
+                count += 1
+
+        return count
+
+    @loader.command()
+    async def addwatch(self, message):
+        """Начать отслеживать текущий чат и загрузить историю."""
+        chat_id = message.chat_id
+
+        if chat_id is None:
+            await utils.answer(message, "Не удалось определить чат.")
+            return
+
+        watched = self.get("watched", [])
+
+        if chat_id not in watched:
+            watched.append(chat_id)
+            self.set("watched", watched)
+
+        count = await self._import_history(chat_id)
+
+        await utils.answer(
+            message,
+            f"Отслеживание включено.\n"
+            f"Загружено сообщений: {count}."
+        )
+
+    @loader.command()
+    async def delwatch(self, message):
+        """Перестать отслеживать текущий чат."""
+        chat_id = message.chat_id
+        watched = self.get("watched", [])
+
+        if chat_id in watched:
+            watched.remove(chat_id)
+            self.set("watched", watched)
+            await utils.answer(message, "Отслеживание выключено.")
+        else:
+            await utils.answer(message, "Этот чат не отслеживается.")
+
+    @loader.command()
+    async def watchall(self, message):
+        """Отслеживать все доступные диалоги и загрузить их историю."""
+        watched = self.get("watched", [])
+        added = 0
+        imported = 0
+
+        async for dialog in self.client.iter_dialogs():
+            chat_id = dialog.id
+
+            if chat_id not in watched:
+                watched.append(chat_id)
+                added += 1
+
+            try:
+                imported += await self._import_history(chat_id)
+            except Exception:
+                continue
+
+        self.set("watched", watched)
+
+        await utils.answer(
+            message,
+            f"Отслеживание всех диалогов включено.\n"
+            f"Новых чатов: {added}.\n"
+            f"Загружено сообщений: {imported}."
+        )
+
+    @loader.command()
+    async def unwatchall(self, message):
+        """Выключить отслеживание всех чатов."""
+        self.set("watched", [])
+        await utils.answer(message, "Отслеживание выключено во всех чатах.")
+
+    @loader.command()
+    async def watchstatus(self, message):
+        """Показать количество отслеживаемых чатов и сохранённых сообщений."""
+        watched = self.get("watched", [])
+        history = self._get_history()
+        changes = self._get_changes()
+
+        total_messages = sum(
+            len(records) for records in history.values()
+        )
+        total_changes = sum(
+            len(records) for records in changes.values()
+        )
+
+        await utils.answer(
+            message,
+            f"Отслеживаемых чатов: {len(watched)}\n"
+            f"Сохранённых сообщений: {total_messages}\n"
+            f"Записей об изменениях: {total_changes}"
+        )
+
+    @loader.command()
+    async def watchhistory(self, message):
+        """Показать сохранённую историю текущего чата."""
+        chat_id = message.chat_id
+        history = self._get_history()
+        records = history.get(str(chat_id), [])
+
+        if not records:
+            await utils.answer(message, "История пока пуста.")
+            return
+
+        lines = []
+
+        for record in records[-20:]:
+            status = " [УДАЛЕНО]" if record.get("deleted") else ""
+            text = record["text"].replace("\n", " ")
+            lines.append(
+                f'ID {record["id"]}{status}: {text[:250]}'
+            )
+
+        await utils.answer(
+            message,
+            "\n".join(lines)
+        )
+
+    @loader.command()
+    async def watchchanges(self, message):
+        """Показать последние изменения текущего чата."""
+        chat_id = message.chat_id
+        changes = self._get_changes().get(str(chat_id), [])
+
+        if not changes:
+            await utils.answer(message, "Изменений пока нет.")
+            return
+
+        lines = []
+
+        for entry in changes[-10:]:
+            if entry["type"] == "edit":
+                lines.append(
+                    f'ID {entry["id"]}: '
+                    f'{entry["old"][:100]} -> {entry["new"][:100]}'
+                )
+            else:
+                lines.append(
+                    f'ID {entry["id"]} удалено: '
+                    f'{entry["text"][:150]}'
+                )
+
+        await utils.answer(message, "\n".join(lines))
