@@ -7,6 +7,7 @@ from .. import loader,utils
 class Triggers(loader.Module):
     """Triggers"""
 
+
     def __init__ (self):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
@@ -23,12 +24,19 @@ class Triggers(loader.Module):
             )
         )
 
+
     strings = {
-        "name": "Triggers",
-        "nosave": "Nothins saved!",
+        "name": "Simple triggers",
+        "nosave": "Couldn't save!",
         "nonesave": "Nothing is saved!",
         "empty": "Message is empty!",
         "nosep": "No saved separator!",
+        "delcfm": "Are you sure you want to delete all triggers?",
+        "yes": "Yeas",
+        "no": "nope, thanks",
+        "yesdone": "Congrats! No saved triggers left :(",
+        "nodone": "YAAAY! (You canceled it)",
+        "nodel": "You don't have any triggers",
         "delsuc": "Deleted successfully!",
         "savesuc": "Saved successfully!\n"
                    "Trigger: {}\n"
@@ -38,6 +46,31 @@ class Triggers(loader.Module):
                    ".settrigger [trigger] / [answer]\n"
                    "/ - is a separator you can set up in the config menu"
     }
+
+    strings_ru = {
+        "name": "Simple triggers",
+        "nosave": "Не удалось сохранить!",
+        "nonesave": "Ничего не сохранено!",
+        "empty": "Пустое сообщение!",
+        "nosep": "Нет сохранённого разделителя!",
+        "delcfm": "Ты точно хочешь удалить все свои триггеры?",
+        "yes": "Да",
+        "no": "Неа",
+        "yesdone": "Все триггеры удалены",
+        "nodone": "Окей, триггеры на месте",
+        "nodel": "У тебя и так триггеров нету",
+        "delsuc": "Триггер успешно удалён!",
+        "savesuc": "Триггер успешно сохранён!\n"
+                   "Триггер: {}\n"
+                   "Ответ: {}",
+        "error": "Error occurred! Please contact the developer(@friendsforeveruwu)!",
+        "example": "Пример команды:\n"
+                   ".settrigger [триггер] / [ответ]\n"
+                   "/ - Разделитель который можно настроить в меню конфига\n"
+                   ".deltrig [триггер] - удалить триггер\n"
+                   ".triggers - лист триггеров\n"
+                   ".example - снова показать этот пример "
+
 
     @loader.command()
     async def settrigger(self, message):
@@ -61,13 +94,15 @@ class Triggers(loader.Module):
             await utils.answer(message, self.strings["savesuc"].format(trigger,answer))
         except ValueError:
             await utils.answer(message, self.strings["error"])
-            await utils.respond(self.strings["example"])
+            await message.respond(self.strings["example"])
             return
+
 
     @loader.command()
     async def example(self, message):
         """Example for .settrigger"""
         await utils.answer(message,self.strings["example"])
+
 
     @loader.command()
     async def triggers(self, message):
@@ -80,6 +115,7 @@ class Triggers(loader.Module):
         for trigger,answer in triggers.items():
             text += f"{trigger} => {answer}\n"
         await utils.answer(message,text)
+
 
     @loader.command()
     async def deltrig(self, message):
@@ -100,6 +136,30 @@ class Triggers(loader.Module):
         await utils.answer(message, self.strings["delsuc"])
 
 
+    @loader.command()
+    async def deltrigall(self, message):
+        """Delete all triggers"""
+        await self.inline.form(
+            text = self.strings["delcfm"],
+            message = message,
+            reply_markup = [
+                [
+                {"text": self.strings["yes"], "callback": self.yes},
+                {"text": self.strings["no"], "callback": self.no}
+                ]
+            ]
+        )
+
+    async def yes(self, call):
+        triggers = self.db.get(self.strings["name"], "Triggers", {})
+        if not triggers:
+            await call.edit(self.strings["nodel"])
+            return
+        self.db.set(self.strings["name"], "Triggers", {})
+        await call.edit(self.strings["yesdone"])
+
+    async def no(self, call):
+        await call.edit(self.strings["nodone"])
 
     @loader.watcher(no_commands=True)
     async def run(self,message):
@@ -120,6 +180,8 @@ class Triggers(loader.Module):
             else:
                 if trigger.lower() in msg:
                     await utils.answer(message, answer)
+
+
 
 
 
