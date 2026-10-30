@@ -70,6 +70,7 @@ class Triggers(loader.Module):
                    ".deltrig [триггер] - удалить триггер\n"
                    ".triggers - лист триггеров\n"
                    ".example - снова показать этот пример "
+    }
 
 
     @loader.command()
