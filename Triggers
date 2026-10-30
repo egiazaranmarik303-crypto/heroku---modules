@@ -1,4 +1,5 @@
 #meta developer: @friendsforeveruwu
+#meta banner: https://github.com/egiazaranmarik303-crypto/heroku---modules/raw/refs/heads/main/banner%20ig
 from .. import loader,utils
 
 
